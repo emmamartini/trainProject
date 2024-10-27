@@ -1,0 +1,4 @@
+.venv
+odkd.py
+train.db
+__pycache__

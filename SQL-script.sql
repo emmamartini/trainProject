@@ -1,0 +1,58 @@
+BEGIN; 
+CREATE TABLE IF NOT EXISTS TrainOwner (
+    TrainOwnerId INTEGER PRIMARY KEY AUTOINCREMENT,
+    OwnerName NVARCHAR(50) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Train (
+    TrainId INTEGER PRIMARY KEY AUTOINCREMENT,
+    TrainOwnerId INTEGER NOT NULL,
+    Canceled BOOLEAN NOT NULL,
+    Delayed BOOLEAN NOT NULL,
+    OriginalDepartureTime DATETIME NOT NULL,
+    ActualDepartureTime DATETIME NULL,
+    FOREIGN KEY (TrainOwnerId) REFERENCES TrainOwner(TrainOwnerId)
+);
+
+CREATE TABLE IF NOT EXISTS Station (
+    StationId INTEGER PRIMARY KEY AUTOINCREMENT,
+    StationName NVARCHAR(30) NOT NULL,
+    Country NVARCHAR(30) NOT NULL,
+    County NVARCHAR(30) NOT NULL,
+    StationSignature NVARCHAR(10) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Passenger (
+    PassengerId INTEGER PRIMARY KEY AUTOINCREMENT,
+    FirstName NVARCHAR(30) NOT NULL,
+    LastName NVARCHAR(30) NOT NULL,
+    Email NVARCHAR(60) NOT NULL,
+    Password NVARCHAR(255) NOT NULL,
+    PhoneNumber NVARCHAR(20) NOT NULL,
+    Active BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS Subscription (
+    SubscriptionId INTEGER PRIMARY KEY AUTOINCREMENT,
+    PassengerId INTEGER NOT NULL,
+    TrainId INTEGER NOT NULL,
+    DepartureStationId INTEGER NOT NULL,
+    DestinationStationId INTEGER NOT NULL,
+    DayOfTheWeek INTEGER NOT NULL,
+    DepartureTime DATETIME NOT NULL,
+    FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
+    FOREIGN KEY (TrainId) REFERENCES Train(TrainId),
+    FOREIGN KEY (DepartureStationId) REFERENCES Station(StationId),
+    FOREIGN KEY (DestinationStationId) REFERENCES Station(StationId)
+);
+
+CREATE TABLE IF NOT EXISTS MessageSent (
+    MessageSentId INTEGER PRIMARY KEY AUTOINCREMENT,
+    PassengerId INTEGER NOT NULL,
+    TrainId INTEGER NOT NULL,
+    SentAt DATETIME NOT NULL,
+    Content NVARCHAR(100) NOT NULL,
+    FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
+    FOREIGN KEY (TrainId) REFERENCES Train(TrainId)
+);
+COMMIT;
