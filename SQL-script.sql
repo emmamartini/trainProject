@@ -35,15 +35,14 @@ CREATE TABLE IF NOT EXISTS Passenger (
 CREATE TABLE IF NOT EXISTS Subscription (
     SubscriptionId INTEGER PRIMARY KEY AUTOINCREMENT,
     PassengerId INTEGER NOT NULL,
-    TrainId INTEGER NOT NULL,
-    DepartureStationId INTEGER NOT NULL,
-    DestinationStationId INTEGER NOT NULL,
+    TrainOwnerId INTEGER NOT NULL,
+    StationId INTEGER NOT NULL,
     DayOfTheWeek INTEGER NOT NULL,
     DepartureTime DATETIME NOT NULL,
+    Active BOOLEAN NOT NULL,
     FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
-    FOREIGN KEY (TrainId) REFERENCES Train(TrainId),
-    FOREIGN KEY (DepartureStationId) REFERENCES Station(StationId),
-    FOREIGN KEY (DestinationStationId) REFERENCES Station(StationId)
+    FOREIGN KEY (TrainOwnerId) REFERENCES TrainOwner(TrainOwnerId),
+    FOREIGN KEY (StationId) REFERENCES Station(StationId)
 );
 
 CREATE TABLE IF NOT EXISTS MessageSent (
