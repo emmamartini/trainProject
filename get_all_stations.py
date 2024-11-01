@@ -1,16 +1,6 @@
 import sqlite3
 import requests
 
-def create_database():
-    conn = sqlite3.connect("train.db")
-
-    cur = conn.cursor()
-    with open ("SQL-script.sql") as file:
-        sqlScript = file.read()
-    cur.executescript(sqlScript)
-    conn.commit()
-
-
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 AUTH_KEY = "1096e6d589254b89a2600b844576f6f9"
 
@@ -48,14 +38,12 @@ def get_stations():
                 last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
             # Om antalet stationer är mindre än gränsen, bryt ut från loopen
             if len(response_data['RESPONSE']['RESULT'][0]['TrainStation']) < 50:  # Om vi fick färre än 50 annonser, finns det inga fler att hämta
-                print("Amount of train stations added to the train station list:", len(train_station_list))
                 return (train_station_list)
 
 def exportTrain(train_station_list):
     conn = sqlite3.connect("train.db")
     cur = conn.cursor()
     for station in train_station_list:
-        print(station)
         StationSignature = station[3]
         cur.execute('SELECT StationSignature FROM station WHERE StationSignature = ?', (StationSignature,))
         existingData=cur.fetchone()
@@ -68,7 +56,4 @@ def exportTrain(train_station_list):
             stationData = [station[0], station[1], countyTransformed, station[3]]
             cur.execute("INSERT OR IGNORE INTO station (StationName, Country, County, StationSignature) VALUES (?, ?, ?, ?)", stationData)
             conn.commit()
-            print("Station has been added!")
-        else:
-            print("This station is already added.")
     conn.close()
