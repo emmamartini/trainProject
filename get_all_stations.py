@@ -53,7 +53,7 @@ def exportTrain(train_station_list):
                 countyTransformed = ', '.join(map(str, station[2]))
             else:
                 countyTransformed = station[2]
-            stationData = [station[0], station[1], countyTransformed, station[3]]
+            stationData = [station[0].lower(), station[1], countyTransformed, station[3].lower()]
             cur.execute("INSERT OR IGNORE INTO station (StationName, Country, County, StationSignature) VALUES (?, ?, ?, ?)", stationData)
             conn.commit()
     conn.close()

@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS Subscription (
     TrainOwnerId INTEGER NOT NULL,
     StationId INTEGER NOT NULL,
     DayOfTheWeek INTEGER NOT NULL,
-    DepartureTime DATETIME NOT NULL,
+    DepartureTime NVARCHAR(5) NOT NULL,
     Active BOOLEAN NOT NULL,
     FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
     FOREIGN KEY (TrainOwnerId) REFERENCES TrainOwner(TrainOwnerId),

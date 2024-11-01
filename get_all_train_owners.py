@@ -39,6 +39,6 @@ def exportOwner(train_owner_set):
     conn = sqlite3.connect("train.db")
     cur = conn.cursor()
     for owner in train_owner_set:
-        cur.execute("INSERT OR IGNORE INTO TrainOwner (OwnerName) VALUES (?)", (owner,))
+        cur.execute("INSERT OR IGNORE INTO TrainOwner (OwnerName) VALUES (?)", (owner.lower(),))
         conn.commit()
     conn.close()
