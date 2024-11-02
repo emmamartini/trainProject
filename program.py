@@ -161,17 +161,22 @@ while runProgram:
                                     print("Sorry! No train owner with that name")
                                     continue
 
-                                subscriptionStation = input("Write which departure station you want to subscribe to: ").lower()
-                                while not subscriptionStation:
-                                    subscriptionStation = input("Please enter your departure station: ").lower()
-                                cur.execute('SELECT StationId FROM Station where StationName = ?', (subscriptionStation,))
-                                existingStation = cur.fetchone()
-                                if not existingStation:
-                                    print("Sorry! No train station with that name...")
-                                    print(""" """)
-                                    time.sleep(3)
-                                    continue
-                                
+                                while True: 
+                                    subscriptionStation = input("Write which departure station you want to subscribe to: ").lower()
+                                    while not subscriptionStation:
+                                        subscriptionStation = input("Please enter your departure station: ").lower()
+                                    cur.execute('SELECT StationId FROM Station where StationName = ?', (subscriptionStation,))
+                                    existingStation = cur.fetchone()
+                                    if existingStation:
+                                        break
+                                    if not existingStation:
+                                        print("Sorry, no station found with that name.")
+                                        cur.execute('SELECT StationName FROM Station where StationName LIKE ?', ("%" + subscriptionStation + "%",))
+                                        similarStation = cur.fetchall()
+                                        if similarStation:
+                                            print(f"These stations have similiar names: {similarStation}?")
+                                        
+                                        
                                 subscriptionDay = input("Enter the day of the week you want to subscribe to: ").lower()
                                 while not subscriptionDay in weekdays:
                                     subscriptionDay = input("Please enter the day of the week: ").lower()
@@ -211,7 +216,7 @@ while runProgram:
 
                                 
                                     if existingData:
-                                        cur.execute("UPDATE Subscription SET Active = 1 WHERE SubscriptionId = ?", (existingData[0]))
+                                        cur.execute("UPDATE Subscription SET Active = 1 WHERE SubscriptionId = ?", (existingData[0],))
                                         conn.commit()
                                         print(f"Your subscription has been reactivated to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
                                 
@@ -232,20 +237,20 @@ while runProgram:
                                 cur = conn.cursor()
                                 print("You want to delete a train subscription")
                                 try:
-                                    cur.execute('SELECT Subscription.SubscriptionId FROM Subscription WHERE Subscription.PassengerId = ?', (info[0],))
+                                    cur.execute('SELECT SubscriptionId FROM Subscription WHERE Active = 1 AND PassengerId = ?', (info[0],))
                                     allSubscriptionsQuery=cur.fetchall()
                                     if len(allSubscriptionsQuery) == 1:
-                                        cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (allSubscriptionsQuery[0],))
-                                        print(f"Thank you! You only had one subscription and it has now been unactivated!")
+                                        cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (allSubscriptionsQuery[0][0],))
+                                        print(f"Thank you! You only had one active subscription and it has now been unactivated!")
                                         conn.commit()
-                                        continue
+                                        continue 
                                 except:
                                     print("No subscriptions found, returning to home screen")
                                     print(""" """)
                                     time.sleep(3)
                                     continue
                                 theOwner = input("From which train owner? ")
-                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Subscription.PassengerId = ? AND TrainOwner.OwnerName = ?', (info[0], theOwner))
+                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Active = 1 AND Subscription.PassengerId = ? AND TrainOwner.OwnerName = ?', (info[0], theOwner))
                                 ownerQuery=cur.fetchall()
                                 if len(ownerQuery) == 1:
                                     cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (ownerQuery[0][0],))
@@ -253,7 +258,7 @@ while runProgram:
                                     conn.commit()
                                     continue
                                 theStation = input ("From which train station? ")
-                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Subscription.StationId FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ?', (info[0], theOwner, theStation))
+                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Subscription.StationId FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Active = 1 AND Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ?', (info[0], theOwner, theStation))
                                 departureQuery=cur.fetchall()
                                 if len(departureQuery) == 1:
                                     cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (departureQuery[0][0],))
@@ -261,7 +266,7 @@ while runProgram:
                                     conn.commit()
                                     continue
                                 theDay = input("What day? ")
-                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Station.StationName, Subscription.DayOfTheWeek FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ? AND Subscription.DayOfTheWeek = ?', (info[0], theOwner, theStation, theDay))
+                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Station.StationName, Subscription.DayOfTheWeek FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Active = 1 AND Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ? AND Subscription.DayOfTheWeek = ?', (info[0], theOwner, theStation, theDay))
                                 dayQuery=cur.fetchall()
                                 if len(dayQuery) == 1:
                                     cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (dayQuery[0][0],))
@@ -269,7 +274,7 @@ while runProgram:
                                     conn.commit()
                                     continue
                                 theTime = input("Which time? ")
-                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Station.StationName, Subscription.DayOfTheWeek, Subscription.DepartureTime FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ? AND Subscription.DayOfTheWeek = ? AND Subscription.DepartureTime = ?', (info[0], theOwner, theStation, theDay, theTime))
+                                cur.execute('SELECT Subscription.SubscriptionId, TrainOwner.TrainOwnerId, TrainOwner.OwnerName, Station.StationName, Subscription.DayOfTheWeek, Subscription.DepartureTime FROM Subscription JOIN TrainOwner ON Subscription.TrainOwnerId = TrainOwner.TrainOwnerId JOIN Station ON Subscription.StationId = Station.StationId WHERE Active = 1 AND Subscription.PassengerId = ? AND TrainOwner.OwnerName = ? AND Station.StationName = ? AND Subscription.DayOfTheWeek = ? AND Subscription.DepartureTime = ?', (info[0], theOwner, theStation, theDay, theTime))
                                 timeQuery=cur.fetchall()
                                 if len(timeQuery) == 1:
                                     cur.execute("UPDATE Subscription SET Active = 0 WHERE SubscriptionId = ?", (timeQuery[0][0],))
@@ -323,7 +328,7 @@ while runProgram:
                                             print("You want to change your email address")
                                             updateEmail=input("Write what you want to change it to: ")
                                             while not updateEmail:
-                                                updateEmail = input("Write what you want to change your address to: ").lower()
+                                                updateEmail = input("Write what you want to change your email address to: ").lower()
                                             cur.execute('SELECT * FROM passenger where Email = ?', (updateEmail,))
                                             existingEmail=cur.fetchone()
                                             if existingEmail:
@@ -331,7 +336,7 @@ while runProgram:
                                             else: 
                                                 break
                                         cur.execute("UPDATE passenger SET Email = ? WHERE PassengerId = ?", (updateEmail, info[0]))
-                                        print(f"Thank you! Your address has now been updated to {updateEmail}!")
+                                        print(f"Thank you! Your email address has now been updated to {updateEmail}!")
                                         conn.commit()
                                         print("Going back to the homescreen...")
                                         print(""" """)
@@ -398,3 +403,8 @@ while runProgram:
         print("Bye!")
         time.sleep(1)
         runProgram=False
+        
+
+#om det är fler tåg som går den tiden får man ställa en kontrollfråga
+#t.ex. vad som är tågets första/sista hållplats/tågLinjeNummer
+#FromLocation; LocationName, ToLocation; LocationName, AdvertisedTrainIdent
