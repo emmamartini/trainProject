@@ -410,3 +410,4 @@ while runProgram:
 #om det är fler tåg som går den tiden får man ställa en kontrollfråga
 #t.ex. vad som är tågets första/sista hållplats/tågLinjeNummer
 #FromLocation; LocationName, ToLocation; LocationName, AdvertisedTrainIdent
+#skapa en till kolumn på subscription som kan vara null där man kan välja slutstation
