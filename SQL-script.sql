@@ -37,12 +37,14 @@ CREATE TABLE IF NOT EXISTS Subscription (
     PassengerId INTEGER NOT NULL,
     TrainOwnerId INTEGER NOT NULL,
     StationId INTEGER NOT NULL,
+    EndStationId INTEGER NULL,
     DayOfTheWeek INTEGER NOT NULL,
     DepartureTime NVARCHAR(5) NOT NULL,
     Active BOOLEAN NOT NULL,
     FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
     FOREIGN KEY (TrainOwnerId) REFERENCES TrainOwner(TrainOwnerId),
-    FOREIGN KEY (StationId) REFERENCES Station(StationId)
+    FOREIGN KEY (StationId) REFERENCES Station(StationId),
+    FOREIGN KEY (EndStationId) REFERENCES Station(StationId)
 );
 
 CREATE TABLE IF NOT EXISTS MessageSent (

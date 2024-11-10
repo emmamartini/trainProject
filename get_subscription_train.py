@@ -19,7 +19,9 @@ def get_subscriptions():
     pass
 
 def send_message():
-    #skickar meddelande till passageraren om tåget är i tid eller dens nya tid
+    #om tåget är i tid: on_time()
+    #om tåget är sent: delayed()
+    #om tåget är inställt: cancelled()
     pass
 
 def save_message_to_database():
