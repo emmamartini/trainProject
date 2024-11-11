@@ -1,21 +1,52 @@
 from config import AUTH_KEY
-
+from programwithfunctions import connect_to_database
+from datetime import datetime, timedelta
 import sqlite3
 import requests
+import sys
 
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 
 def check_subscription_time():
+    dateAndTime = datetime.datetime.now()
+    currentDay = dateAndTime.weekday()
+    currentTime = dateAndTime.time()
+    currentTime = currentTime.strftime("%H:%M")
+    currentDate = dateAndTime.strftime("%Y-%m-%d")
+
+    def dateToDay(weekday):
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        return weekdays[weekday]
+    day = dateToDay(currentDay)
+    print(day) 
+    
+    def matching_day_and_time(day, time, timein15):
+        timeIn15Minutes = time + timedelta(minutes=15)
+        conn = connect_to_database()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM Subscription WHERE DayOfTheWeek = ? AND DepartureTime BETWEEN ? AND ? Active = 1', (day, time, timein15))
+        subscriptions = cur.fetchall()
+        
+        return True
+        
+    matchOrNot = matching_day_and_time()
+    
+    if matchOrNot
+        get_subscriptions()
+      
     #när dagen är rätt och tiden är en kvart innan ska ett meddelande skickas till passageraren
     #skapa ett program som då och då kollar om någons tid närmar sig(separat funktion)   
     #om en tid närmar sig ska detta triggas oftare (15 min, 10 min, 5 min, varje minut) 
-    pass
+check_subscription_time()
 
 
 def get_subscriptions():
-    #om check_subscription_time returnerar något (hela raden som matchar tiden) kollas det upp här!
-    #då hämtar denna funktion information från trafikverket
-    #och returnerar information till funktionen
+    #om check_subscription_time returnerar något (hela raderna som matchar) kollas det upp här!
+    #då hämtar denna funktion information från databasen
+    #och returnerar information till get_subscription_from_api
+    pass
+
+def get_subscription_from_api():
     pass
 
 def send_message():
