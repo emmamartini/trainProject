@@ -133,6 +133,7 @@ def user_dashboard(userInfo):
         elif userNumber == 5:
             print("Logging out...")
             break
+            #ta bort no matching phone number härifrån
         else:
             print("Invalid choice.")
 

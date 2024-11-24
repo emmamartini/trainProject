@@ -8,3 +8,6 @@ if __name__ == '__main__':
     exportTrain(train_station_list)
     train_owner_set = get_owners()
     exportOwner(train_owner_set)
+    
+    
+#alla tåg som prenumereras på och som gått/blivit inställda under dagen skrivs in databasen i slutet av dagen!

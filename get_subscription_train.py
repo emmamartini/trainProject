@@ -1,114 +1,150 @@
 from config import AUTH_KEY
 from programwithfunctions import connect_to_database
 from datetime import datetime, timedelta
-import sqlite3
 import requests
-import sys
+import os
 
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 
+def send_message(trainInfo):
+    txtFile = "textMessages.txt"
+    if not os.path.exists(txtFile):
+        with open(txtFile, "w", encoding="utf-8") as file:
+            file.write("")
+            
+    departureTimeAndDate = trainInfo[0][1]
+    departureTime = departureTimeAndDate[11:16]
+    if trainInfo[0][4] != False:
+        estimatedTimeAndDate = trainInfo[0][4]
+        estimatedDepartureTime = estimatedTimeAndDate[11:16]
+        
+    #if the train is on time
+    if all(value == False for value in trainInfo[2:7]):
+        print("Tåget är i tid!! God bless!")
+        textMessage = f"Hello NAME, your train is on time and is leaving at {departureTime}."
+        
+    #if the train is cancelled
+    elif trainInfo[3] == True:
+        print("Tåget är inställt! Attans!")
+        textMessage = f"Hello NAME, your train with departure time {departureTime} is sadly canceled."
+
+    #if the train is delayed
+    elif departureTime != estimatedDepartureTime:
+        print(f"Tåget är försenat till {trainInfo[4]}")
+        textMessage = f"Hello NAME, your train with original departure time {departureTime} is estimated to leave {estimatedDepartureTime}."
+    
+    with open(txtFile, "a", encoding="utf-8") as file:
+        file.write(textMessage + "\n")
+
+def actual_names(subscriptions):
+    conn = connect_to_database()
+    cur = conn.cursor()
+    for subscription in subscriptions:
+        cur.execute('SELECT OwnerName FROM TrainOwner where TrainOwnerId LIKE ?', (subscription[2],))
+        actualOwnerName = cur.fetchall()
+        actualOwnerName = actualOwnerName[0][0]
+        cur.execute('SELECT StationSignature FROM Station where StationId LIKE ?', (subscription[3],))
+        actualStationName = cur.fetchall()
+        actualStationName = actualStationName[0][0]
+        print(subscription)
+        print(actualOwnerName)
+        print(actualStationName)
+        print(subscription[6])
+        
+        subscription = list(subscription)
+        subscription[2] = actualOwnerName
+        subscription = tuple(subscription)
+        subscription = list(subscription)
+        subscription[3] = actualStationName
+        subscription = tuple(subscription)
+        print(subscription)
+        get_train_from_api(subscription)
+
+
+def get_train_from_api(subscriptionRow):  
+    trains = []
+    last_change_id = 0
+    todaysDate = datetime.now()
+    todaysDate = todaysDate.strftime("%Y-%m-%d")
+    while True:
+        xml_request = f"""
+        <REQUEST>
+          <LOGIN authenticationkey='{AUTH_KEY}'/>
+          <QUERY objecttype="TrainAnnouncement" schemaversion="1.5" limit="50" changeid='{last_change_id}'>
+            <FILTER>
+            <AND>
+                <EQ name="ActivityType" value="Avgang"/>
+                <EQ name="InformationOwner" value="{subscriptionRow[2]}"/>
+                <EQ name="LocationSignature" value="{subscriptionRow[3]}"/>
+                <EQ name="AdvertisedTimeAtLocation" value="{todaysDate}T{subscriptionRow[6]}:00"/>
+            </AND>
+            </FILTER>
+            <INCLUDE>LocationSignature</INCLUDE>
+            <INCLUDE>EstimatedTimeIsPreliminary</INCLUDE>
+            <INCLUDE>Canceled</INCLUDE>
+            <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
+            <INCLUDE>PlannedEstimatedTimeAtLocation</INCLUDE>
+            <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
+            <INCLUDE>PlannedEstimatedTimeAtLocationIsValid</INCLUDE>
+          </QUERY>
+        </REQUEST>
+        """
+        headers = {'Content-Type': 'text/xml'}
+        response = requests.post(API_URL, headers=headers, data=xml_request)
+        print(response.json())
+        if response.status_code == 200:
+            response_data = response.json()
+            for item in response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']:
+                trains.append([
+                    item['LocationSignature'],
+                    item['AdvertisedTimeAtLocation'],
+                    item['EstimatedTimeIsPreliminary'],
+                    item['Canceled'],
+                    item.get('EstimatedTimeAtLocation', False),
+                    item.get('PlannedEstimatedTimeAtLocation', False),
+                    item['PlannedEstimatedTimeAtLocationIsValid']])
+            if 'INFO' in response_data['RESPONSE']['RESULT'][0]:
+                last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
+            if len(response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']) < 50:
+                if len(response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']) == 1:
+                    send_message(trains)
+                else:
+                    print("attans")
+                break
+        pass
+    pass
+
 def check_subscription_time():
-    dateAndTime = datetime.datetime.now()
+    dateAndTime = datetime.now()
     currentDay = dateAndTime.weekday()
-    currentTime = dateAndTime.time()
-    currentTime = currentTime.strftime("%H:%M")
-    currentDate = dateAndTime.strftime("%Y-%m-%d")
 
     def dateToDay(weekday):
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         return weekdays[weekday]
     day = dateToDay(currentDay)
-    print(day) 
     
-    def matching_day_and_time(day, time, timein15):
-        timeIn15Minutes = time + timedelta(minutes=15)
+    def matching_day_and_time(day):
+        currentTime = datetime.now()
+        currentTimeString = currentTime.strftime("%H:%M")
+        timeIn15 = currentTime + timedelta(minutes=15)
+        timeIn15String = timeIn15.strftime("%H:%M")
         conn = connect_to_database()
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Subscription WHERE DayOfTheWeek = ? AND DepartureTime BETWEEN ? AND ? Active = 1', (day, time, timein15))
+        cur.execute('SELECT * FROM Subscription WHERE DayOfTheWeek = ? AND DepartureTime BETWEEN ? AND ? AND Active = 1', (day, currentTimeString, timeIn15String))
         subscriptions = cur.fetchall()
+        return(subscriptions)
         
-        return True
-        
-    matchOrNot = matching_day_and_time()
+    match = matching_day_and_time(day)
     
-    if matchOrNot
-        get_subscriptions()
+    if match:
+        actual_names(match)
+    else:
+        print("No matches found!")
       
     #när dagen är rätt och tiden är en kvart innan ska ett meddelande skickas till passageraren
     #skapa ett program som då och då kollar om någons tid närmar sig(separat funktion)   
     #om en tid närmar sig ska detta triggas oftare (15 min, 10 min, 5 min, varje minut) 
 check_subscription_time()
 
-
-def get_subscriptions():
-    #om check_subscription_time returnerar något (hela raderna som matchar) kollas det upp här!
-    #då hämtar denna funktion information från databasen
-    #och returnerar information till get_subscription_from_api
-    pass
-
-def get_subscription_from_api():
-    pass
-
-def send_message():
-    #om tåget är i tid: on_time()
-    #om tåget är sent: delayed()
-    #om tåget är inställt: cancelled()
-    pass
-
 def save_message_to_database():
     pass
-
-
-
-def get_stations():
-    last_change_id = 0
-    train_station_list = []
-    
-    while True:
-        xml_request = f"""
-        <REQUEST>
-          <LOGIN authenticationkey='{AUTH_KEY}'/>
-          <QUERY objecttype="TrainStation" namespace="rail.infrastructure" schemaversion="1.5" limit="50" changeid='{last_change_id}'>
-            <INCLUDE>AdvertisedLocationName</INCLUDE>
-            <INCLUDE>CountryCode</INCLUDE>
-            <INCLUDE>CountyNo</INCLUDE>
-            <INCLUDE>LocationSignature</INCLUDE>
-          </QUERY>
-        </REQUEST>
-        """
-
-        headers = {'Content-Type': 'text/xml'}
-        
-        response = requests.post(API_URL, headers=headers, data=xml_request)
-        if response.status_code == 200:
-            response_data = response.json()
-            for item in response_data['RESPONSE']['RESULT'][0]['TrainStation']:
-                train_station_list.append([
-                    item['AdvertisedLocationName'],
-                    item['CountryCode'],
-                    item.get('CountyNo', 'Unspecified'),
-                    item['LocationSignature']])
-             
-            if 'INFO' in response_data['RESPONSE']['RESULT'][0]:
-                last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
-            # Om antalet stationer är mindre än gränsen, bryt ut från loopen
-            if len(response_data['RESPONSE']['RESULT'][0]['TrainStation']) < 50:  # Om vi fick färre än 50 annonser, finns det inga fler att hämta
-                return (train_station_list)
-
-def exportTrain(train_station_list):
-    conn = sqlite3.connect("train.db")
-    cur = conn.cursor()
-    for station in train_station_list:
-        StationSignature = station[3]
-        cur.execute('SELECT StationSignature FROM station WHERE StationSignature = ?', (StationSignature,))
-        existingData=cur.fetchone()
-
-        if existingData is None:
-            if isinstance(station[2], list):
-                countyTransformed = ', '.join(map(str, station[2]))
-            else:
-                countyTransformed = station[2]
-            stationData = [station[0].lower(), station[1], countyTransformed, station[3].lower()]
-            cur.execute("INSERT OR IGNORE INTO station (StationName, Country, County, StationSignature) VALUES (?, ?, ?, ?)", stationData)
-            conn.commit()
-    conn.close()
