@@ -56,4 +56,13 @@ CREATE TABLE IF NOT EXISTS MessageSent (
     FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
     FOREIGN KEY (TrainId) REFERENCES Train(TrainId)
 );
+
+CREATE TABLE IF NOT EXISTS TrainAnnouncement (
+    TrainAnnouncementId INTEGER PRIMARY KEY AUTOINCREMENT,
+    TrainId INTEGER NOT NULL,
+    AdvertisedTime DATETIME NOT NULL,
+    EstimatedTime DATETIME NULL,
+    Status NVARCHAR(100) NOT NULL,
+    FOREIGN KEY (TrainId) REFERENCES Train(TrainId)
+);
 COMMIT;

@@ -3,10 +3,13 @@ from programwithfunctions import connect_to_database
 from datetime import datetime, timedelta
 import requests
 import os
+import time
 
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 
 def send_message(trainInfo):
+    conn = connect_to_database()
+    cur = conn.cursor()
     txtFile = "textMessages.txt"
     if not os.path.exists(txtFile):
         with open(txtFile, "w", encoding="utf-8") as file:
@@ -20,21 +23,33 @@ def send_message(trainInfo):
         
     #if the train is on time
     if all(value == False for value in trainInfo[2:7]):
+        status = "On_Time"
         print("Tåget är i tid!! God bless!")
         textMessage = f"Hello NAME, your train is on time and is leaving at {departureTime}."
         
     #if the train is cancelled
     elif trainInfo[3] == True:
+        status = "Canceled"
         print("Tåget är inställt! Attans!")
         textMessage = f"Hello NAME, your train with departure time {departureTime} is sadly canceled."
 
     #if the train is delayed
     elif departureTime != estimatedDepartureTime:
+        status = "Delayed"
         print(f"Tåget är försenat till {trainInfo[4]}")
         textMessage = f"Hello NAME, your train with original departure time {departureTime} is estimated to leave {estimatedDepartureTime}."
     
     with open(txtFile, "a", encoding="utf-8") as file:
         file.write(textMessage + "\n")
+    
+    if status == "Delayed":
+        cur.execute("INSERT OR IGNORE INTO TrainAnnouncement (TrainId, AdvertisedTime, EstimatedTime, Status) VALUES (?, ?, ?, ?)", (passengerId, departureTime, estimatedDepartureTime, status))
+        conn.commit()
+    else:
+        cur.execute("INSERT OR IGNORE INTO TrainAnnouncement (TrainId, AdvertisedTime, Status) VALUES (?, ?, ?, ?)", (passengerId, departureTime, status))
+        conn.commit()
+    
+    
 
 def actual_names(subscriptions):
     conn = connect_to_database()
@@ -115,31 +130,33 @@ def get_train_from_api(subscriptionRow):
     pass
 
 def check_subscription_time():
-    dateAndTime = datetime.now()
-    currentDay = dateAndTime.weekday()
+    while True:
+        dateAndTime = datetime.now()
+        currentDay = dateAndTime.weekday()
 
-    def dateToDay(weekday):
-        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-        return weekdays[weekday]
-    day = dateToDay(currentDay)
-    
-    def matching_day_and_time(day):
-        currentTime = datetime.now()
-        currentTimeString = currentTime.strftime("%H:%M")
-        timeIn15 = currentTime + timedelta(minutes=15)
-        timeIn15String = timeIn15.strftime("%H:%M")
-        conn = connect_to_database()
-        cur = conn.cursor()
-        cur.execute('SELECT * FROM Subscription WHERE DayOfTheWeek = ? AND DepartureTime BETWEEN ? AND ? AND Active = 1', (day, currentTimeString, timeIn15String))
-        subscriptions = cur.fetchall()
-        return(subscriptions)
-        
-    match = matching_day_and_time(day)
-    
-    if match:
-        actual_names(match)
-    else:
-        print("No matches found!")
+        def dateToDay(weekday):
+            weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+            return weekdays[weekday]
+        day = dateToDay(currentDay)
+
+        def matching_day_and_time(day):
+            currentTime = datetime.now()
+            currentTimeString = currentTime.strftime("%H:%M")
+            timeIn15 = currentTime + timedelta(minutes=51)
+            timeIn15String = timeIn15.strftime("%H:%M")
+            conn = connect_to_database()
+            cur = conn.cursor()
+            cur.execute('SELECT * FROM Subscription WHERE DayOfTheWeek = ? AND DepartureTime = ? AND Active = 1', (day, timeIn15String))
+            subscriptions = cur.fetchall()
+            return(subscriptions)
+
+        match = matching_day_and_time(day)
+
+        if match:
+            actual_names(match)
+        else:
+            print("No matches found!")
+        time.sleep(60)
       
     #när dagen är rätt och tiden är en kvart innan ska ett meddelande skickas till passageraren
     #skapa ett program som då och då kollar om någons tid närmar sig(separat funktion)   
