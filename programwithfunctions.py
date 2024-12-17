@@ -266,33 +266,30 @@ def add_subscription(passengerId):
     subscriptionInfo = [subscriptionTrainOwner, existingStation[0], subscriptionDay, subscriptionTime]
     subscriptionListReturned = train_existence(subscriptionInfo) 
     
-    if len(subscriptionListReturned) > 1:
-        subscriptionEndStation = input("Enter the end station of the train: ")
-        while not subscriptionEndStation:
-            subscriptionEndStation = input("Please enter the end station: ")
+    subscriptionEndStation = input("Enter the end station of the train: ")
+    while not subscriptionEndStation:
+        subscriptionEndStation = input("Please enter the end station: ")
             
+    if subscriptionListReturned:
         for endStation in subscriptionListReturned:
-            if subscriptionEndStation == endStation["ToLocation.LocationName"]:
-                cur.execute('SELECT StationId FROM Station where StationName = ?', (subscriptionEndStation,))
-                subscriptionStationId = cur.fetchone()
-                subscriptionListReturned = [1]
-                existingStation[0] = subscriptionStationId
+            cur.execute('SELECT StationId, StationSignature FROM Station where StationName = ?', (subscriptionEndStation,))
+            subscriptionEndStationAndSignature = cur.fetchone()
+            print(subscriptionEndStationAndSignature[0])
+            print(endStation["ToLocation"][0]["LocationName"])
+            if subscriptionEndStationAndSignature[1] == endStation["ToLocation"][0]["LocationName"].lower():
+                subscriptionEndStationId = subscriptionEndStationAndSignature[0]
             else:
-                print("Sorry! No train found.")
+                print("Sorry! No train found with that end station.")
                 returning()
                 break
-
-    if len(subscriptionListReturned) == 1:
-        cur.execute('SELECT Subscription.PassengerId, Subscription.TrainOwnerId, Subscription.StationId, Subscription.DayOfTheWeek, Subscription.DepartureTime, Subscription.Active FROM Subscription WHERE PassengerId = ? AND TrainOwnerId = ? AND StationId = ? AND DayOfTheWeek = ? AND DepartureTime = ?', (passengerId, existingOwner[0], existingStation[0], subscriptionDay, subscriptionTime))
-        existingData=cur.fetchone()
-        
+            
         if existingData is None:
-            cur.execute("INSERT OR IGNORE INTO Subscription (PassengerId, TrainOwnerId, StationId, DayOfTheWeek, DepartureTime, Active) VALUES (?, ?, ?, ?, ?, 1)", (passengerId, existingOwner[0], existingStation[0], subscriptionDay, subscriptionTime))
+            cur.execute("INSERT OR IGNORE INTO Subscription (PassengerId, TrainOwnerId, StationId, EndStationId, DayOfTheWeek, DepartureTime, Active) VALUES (?, ?, ?, ?, ?, ?, 1)", (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
             conn.commit()
             print(f"You are now subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
 
         elif existingData and existingData[5] == 0:
-            cur.execute('SELECT Subscription.SubscriptionId, Subscription.PassengerId, Subscription.TrainOwnerId, Subscription.StationId, Subscription.DayOfTheWeek, Subscription.DepartureTime, Subscription.Active FROM Subscription WHERE PassengerId = ? AND TrainOwnerId = ? AND StationId = ? AND DayOfTheWeek = ? AND DepartureTime = ? AND Active = 0', (passengerId, existingOwner[0], existingStation[0], subscriptionDay, subscriptionTime))
+            cur.execute('SELECT Subscription.SubscriptionId, Subscription.PassengerId, Subscription.TrainOwnerId, Subscription.StationId, Subscription.EndStationId, Subscription.DayOfTheWeek, Subscription.DepartureTime, Subscription.Active FROM Subscription WHERE PassengerId = ? AND TrainOwnerId = ? AND StationId = ? AND DayOfTheWeek = ? AND DepartureTime = ? AND Active = 0', (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
             existingData=cur.fetchone()
 
             if existingData:
@@ -304,8 +301,8 @@ def add_subscription(passengerId):
             if existingData:
                 print(f"You are already subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
 
-    if not subscriptionListReturned:
-        print("Sorry! No train found.")
+    else:
+        print("Sorry, no match found!")
     time.sleep(1)
     returning()
 
