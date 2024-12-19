@@ -12,24 +12,24 @@ API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 delayedTrainQueue = queue.Queue()
 
 def delayed_train():
+    activityIdList = []
     while True:
         try:
             delayedTrain = delayedTrainQueue.get(timeout=180)
             trainInfo, passengerInfo = delayedTrain
             
-            if not more_than_0(trainInfo):
-                pass
+            if not more_than_5(trainInfo, passengerInfo):
+                print("hej1")
+                continue
             
-                if not has_train_departed(trainInfo):
-                    delayedTrainQueue.put(delayedTrain)
-                    
-                    if not has_train_departed():
-                        delayed_messages(trainInfo, passengerInfo)
+            if not has_train_departed(trainInfo):
+                print("hej2")
+                delayedTrainQueue.put(delayedTrain)
             
         except queue.Empty:
             pass
 
-def more_than_0(trainInfo):
+def more_than_5(trainInfo, passengerInfo):
     if trainInfo[0][5] == False:
         departureTimeAndDateString = trainInfo[0][2]
     else:
@@ -37,12 +37,24 @@ def more_than_0(trainInfo):
         
     departureTimeString = departureTimeAndDateString[11:16]    
     currentTimeString = datetime.now().strftime("%H:%M")  
-    currentTime = datetime.strptime(currentTimeString, "%H:%M").time()
-    departureTime = datetime.strptime(departureTimeString, "%H:%M").time()
+    currentTime = datetime.strptime(currentTimeString, "%H:%M")
+    departureTime = datetime.strptime(departureTimeString, "%H:%M")
     print(departureTime)
     print(currentTime)  
-    if currentTime - departureTime > 0:
+    timeDifference = currentTime - departureTime
+    
+    #Om tåget går inom 5 minuter
+    if timedelta(minutes=0) <= timeDifference <= timedelta(minutes=5):
         return True
+    
+    #Om tåget har avgått
+    elif timeDifference <= timedelta(minutes=0):
+        departured_train(trainInfo)
+        return False
+    
+    #Om tåget avgår inom 5 minuter
+    elif timeDifference > timedelta(minutes=5):
+        delayed_messages(trainInfo, passengerInfo)
 
 def has_train_departed(trainInfo):
     if trainInfo[0][5] == False:
@@ -197,6 +209,7 @@ def get_train_from_api(subscriptionRow):
                 <EQ name="AdvertisedTimeAtLocation" value="{todaysDate}T{subscriptionRow[6]}:00"/>
             </AND>
             </FILTER>
+            <INCLUDE>ActivityId</INCLUDE>
             <INCLUDE>InformationOwner</INCLUDE>
             <INCLUDE>LocationSignature</INCLUDE>
             <INCLUDE>ToLocation.LocationName</INCLUDE>
@@ -223,7 +236,8 @@ def get_train_from_api(subscriptionRow):
                     item.get('EstimatedTimeAtLocation', False),
                     item.get('PlannedEstimatedTimeAtLocation', False),
                     item['PlannedEstimatedTimeAtLocationIsValid'],
-                    item['InformationOwner']])
+                    item['InformationOwner'],
+                    item['ActivityId']])
             print(trains)
             if 'INFO' in response_data['RESPONSE']['RESULT'][0]:
                 last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
@@ -248,7 +262,7 @@ def check_subscription_time():
 
         def matching_day_and_time(day):
             currentTime = datetime.now()
-            timeNow = currentTime + timedelta(minutes=0)
+            timeNow = currentTime + timedelta(minutes=-300)
             timeNowString = timeNow.strftime("%H:%M")
             timeIn5 = currentTime + timedelta(minutes=5)
             timeIn5String = timeIn5.strftime("%H:%M")
@@ -281,5 +295,3 @@ check_subscription_time()
 
 def save_message_to_database():
     pass
-
-
