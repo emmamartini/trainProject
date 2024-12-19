@@ -222,7 +222,7 @@ def add_subscription(passengerId):
             cur.execute('SELECT OwnerName FROM TrainOwner where OwnerName LIKE ?', ("%" + subscriptionTrainOwner + "%",))
             similarOwner = cur.fetchall()
             if similarOwner:
-                print(f"These stations have similiar names: {similarOwner}?")
+                print(f"These train owners have similiar names: {similarOwner}?")
         if existingOwner:
             break
     while True: 
@@ -239,7 +239,6 @@ def add_subscription(passengerId):
             similarStation = cur.fetchall()
             if similarStation:
                 print(f"These stations have similiar names: {similarStation}?")
-            
             
     subscriptionDay = input("Enter the day of the week you want to subscribe to: ").lower()
     while not subscriptionDay in weekdays:
@@ -266,10 +265,21 @@ def add_subscription(passengerId):
     subscriptionInfo = [subscriptionTrainOwner, existingStation[0], subscriptionDay, subscriptionTime]
     subscriptionListReturned = train_existence(subscriptionInfo) 
     
-    subscriptionEndStation = input("Enter the end station of the train: ")
-    while not subscriptionEndStation:
-        subscriptionEndStation = input("Please enter the end station: ")
-            
+    while True:
+        subscriptionEndStation = input("Enter the end station of the train: ").lower()
+        while not subscriptionEndStation:
+            subscriptionEndStation = input("Please enter the end station: ").lower()
+        cur.execute('SELECT StationId FROM Station where StationName = ?', (subscriptionEndStation,))
+        existingEndStation = cur.fetchone()
+        if existingEndStation:
+            break
+        if not existingEndStation:
+            print("Sorry, no station found with that name.")
+            cur.execute('SELECT StationName FROM Station where StationName LIKE ?', ("%" + subscriptionEndStation + "%",))
+            similarEndStation = cur.fetchall()
+            if similarEndStation:
+                print(f"These stations have similiar names: {similarEndStation}?")
+        
     if subscriptionListReturned:
         for endStation in subscriptionListReturned:
             cur.execute('SELECT StationId, StationSignature FROM Station where StationName = ?', (subscriptionEndStation,))
@@ -283,23 +293,23 @@ def add_subscription(passengerId):
                 returning()
                 break
             
-        if existingData is None:
-            cur.execute("INSERT OR IGNORE INTO Subscription (PassengerId, TrainOwnerId, StationId, EndStationId, DayOfTheWeek, DepartureTime, Active) VALUES (?, ?, ?, ?, ?, ?, 1)", (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
-            conn.commit()
-            print(f"You are now subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
-
-        elif existingData and existingData[5] == 0:
-            cur.execute('SELECT Subscription.SubscriptionId, Subscription.PassengerId, Subscription.TrainOwnerId, Subscription.StationId, Subscription.EndStationId, Subscription.DayOfTheWeek, Subscription.DepartureTime, Subscription.Active FROM Subscription WHERE PassengerId = ? AND TrainOwnerId = ? AND StationId = ? AND DayOfTheWeek = ? AND DepartureTime = ? AND Active = 0', (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
-            existingData=cur.fetchone()
-
-            if existingData:
-                cur.execute("UPDATE Subscription SET Active = 1 WHERE SubscriptionId = ?", (existingData[0],))
+            if existingData is None:
+                cur.execute("INSERT OR IGNORE INTO Subscription (PassengerId, TrainOwnerId, StationId, EndStationId, DayOfTheWeek, DepartureTime, Active) VALUES (?, ?, ?, ?, ?, ?, 1)", (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
                 conn.commit()
-                print(f"Your subscription has been reactivated to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
+                print(f"You are now subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
 
-        elif existingData and existingData[5] == 1:
-            if existingData:
-                print(f"You are already subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
+            elif existingData and existingData[5] == 0:
+                cur.execute('SELECT Subscription.SubscriptionId, Subscription.PassengerId, Subscription.TrainOwnerId, Subscription.StationId, Subscription.EndStationId, Subscription.DayOfTheWeek, Subscription.DepartureTime, Subscription.Active FROM Subscription WHERE PassengerId = ? AND TrainOwnerId = ? AND StationId = ? AND DayOfTheWeek = ? AND DepartureTime = ? AND Active = 0', (passengerId, existingOwner[0], existingStation[0], subscriptionEndStationId, subscriptionDay, subscriptionTime))
+                existingData=cur.fetchone()
+
+                if existingData:
+                    cur.execute("UPDATE Subscription SET Active = 1 WHERE SubscriptionId = ?", (existingData[0],))
+                    conn.commit()
+                    print(f"Your subscription has been reactivated to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
+
+            elif existingData and existingData[5] == 1:
+                if existingData:
+                    print(f"You are already subscribed to {subscriptionTrainOwner.capitalize()} in {subscriptionStation.capitalize()} on {subscriptionDay.capitalize()}s at {subscriptionTime} o'clock")
 
     else:
         print("Sorry, no match found!")

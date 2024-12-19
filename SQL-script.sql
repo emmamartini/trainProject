@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS Train (
     StationId INTEGER NOT NULL,
     EndStationId INTEGER NOT NULL,
     Canceled BOOLEAN NOT NULL,
-    Delayed BOOLEAN NOT NULL,
     OriginalDepartureTime DATETIME NOT NULL,
     ActualDepartureTime DATETIME NULL,
     FOREIGN KEY (TrainOwnerId) REFERENCES TrainOwner(TrainOwnerId),
@@ -61,14 +60,12 @@ CREATE TABLE IF NOT EXISTS MessageSent (
     FOREIGN KEY (TrainId) REFERENCES Train(TrainId)
 );
 
-CREATE TABLE IF NOT EXISTS TrainAnnouncement (
-    TrainAnnouncementId INTEGER PRIMARY KEY AUTOINCREMENT,
-    StationId INTEGER NOT NULL,
-    EndStationId INTEGER NOT NULL,
-    AdvertisedTime DATETIME NOT NULL,
-    EstimatedTime DATETIME NULL,
-    Status NVARCHAR(100) NOT NULL,
-    FOREIGN KEY (StationId) REFERENCES Station(StationId),
-    FOREIGN KEY (EndStationId) REFERENCES Station(StationId)
-);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_train_null_actualdeparturetime
+ON Train (TrainOwnerId, StationId, EndStationId, Canceled, OriginalDepartureTime, ActualDepartureTime)
+WHERE ActualDepartureTime IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_train_nonnull_actualdeparturetime
+ON Train (TrainOwnerId, StationId, EndStationId, Canceled, OriginalDepartureTime)
+WHERE ActualDepartureTime IS NULL;
+
 COMMIT;
