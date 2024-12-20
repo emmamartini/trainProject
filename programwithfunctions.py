@@ -1,9 +1,14 @@
 from config import AUTH_KEY
 import sqlite3
 import time
-import getpass
+import bcrypt
 import requests
 from datetime import datetime, timedelta
+
+def hash_password(password):
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed_password
 
 def returning():
     print("Returning...")
@@ -32,6 +37,8 @@ def new_user(userInfo):
     existingData = cur.fetchone()
 
     if existingData is None:
+        hashedPassword = hash_password(userInfo[3])
+        userInfo[3] = hashedPassword
         cur.execute("INSERT INTO passenger (FirstName, LastName, Email, Password, PhoneNumber, Active) VALUES (?, ?, ?, ?, ?, 1)", userInfo)
         conn.commit()
         print("User has been created!")
@@ -41,18 +48,19 @@ def new_user(userInfo):
     conn.close()
     
 def gather_userInfo():
-    FirstName = input("Enter your first name: ").lower().title().isalpha()
-    while not FirstName:
-        FirstName = input("Please enter your first name: ").lower().title().isalpha()
-    LastName = input("Enter your last name: ").lower().title().isalpha()
-    while not LastName:
-        LastName = input("Please enter your last name: ").lower().title().isalpha()
+    FirstName = input("Enter your first name: ").lower().title()
+    while not FirstName.isalpha():
+        FirstName = input("Please enter your first name: ").lower().title()
+    print(FirstName)
+    LastName = input("Enter your last name: ").lower().title()
+    while not LastName.isalpha():
+        LastName = input("Please enter your last name: ").lower().title()
     Email = input("Enter your email address: ").lower()
     while not Email:
         Email = input("Please enter your email address: ").lower()
-    Password = getpass.getpass("Create a password: ")
+    Password = input("Create a password: ")
     while not Password:
-        Password = getpass.getpass("Please enter a password: ")
+        Password = input("Please enter a password: ")
     while True:
         PhoneNumber = input("Enter your phone number: ")
         while not PhoneNumber: 
@@ -65,6 +73,9 @@ def gather_userInfo():
     userInfo=[FirstName, LastName, Email, Password, PhoneNumber]
     return userInfo
 
+def check_password(storedHash, password):
+    return bcrypt.checkpw(password.encode('utf-8'), storedHash)
+
 def log_in():
     conn = connect_to_database()
     cur = conn.cursor()
@@ -72,16 +83,16 @@ def log_in():
     existingData = cur.fetchall()
 
     yourPhoneNumber = input("Please write your phone number: ")
-    yourPassword = getpass.getpass("Please write your password: ")
+    yourPassword = input("Please write your password: ")
 
     if existingData:
         for info in existingData:
             if yourPhoneNumber == info[5]:
-                if yourPassword != info[4]:
+                if not check_password(info[4], yourPassword):
                     print("You are an existing user but you are using the wrong password.")          
                     returning()
                     break
-                if yourPassword == info[4] and info[6] == 0:
+                if check_password(info[4], yourPassword) and info[6] == 0:
                     print("Your account is inactivated.") 
                     activationAnswer = input("Do you want to activate your account? Yes/No: ").lower().capitalize()
                     if activationAnswer == "Yes":
@@ -90,7 +101,7 @@ def log_in():
                         conn.commit()
                     returning()
                     break
-                if yourPassword == info[4] and info[6] == 1:
+                if check_password(info[4], yourPassword) and info[6] == 1:
                     print(f"Welcome {info[1]} {info[2]}!")
                     user_dashboard(info)
         if yourPhoneNumber != info[5]:
@@ -470,9 +481,9 @@ def update_information(passengerId):
             break
         if updateNumber==4:
             print("You want to change your password")
-            updatePassword=getpass.getpass("Write what you want to change it to: ")
+            updatePassword=input("Write what you want to change it to: ")
             while not updatePassword:
-                updatePassword = getpass.getpass("Write what you want to change your password to: ")
+                updatePassword = input("Write what you want to change your password to: ")
             cur.execute("UPDATE passenger SET Password = ? WHERE PassengerId = ?", (updatePassword, passengerId))
             print("Thank you! Your password has now been updated!")
             conn.commit()
