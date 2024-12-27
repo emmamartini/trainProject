@@ -262,7 +262,7 @@ def check_subscription_time():
 
         def matching_day_and_time(day):
             currentTime = datetime.now()
-            timeNow = currentTime + timedelta(minutes=-300)
+            timeNow = currentTime + timedelta(minutes=0)
             timeNowString = timeNow.strftime("%H:%M")
             timeIn5 = currentTime + timedelta(minutes=5)
             timeIn5String = timeIn5.strftime("%H:%M")
@@ -295,3 +295,6 @@ check_subscription_time()
 
 def save_message_to_database():
     pass
+
+
+#Skriv en kod för att spara meddelandena till databasen

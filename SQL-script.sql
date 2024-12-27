@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS Passenger (
     Email NVARCHAR(60) NOT NULL,
     Password NVARCHAR(255) NOT NULL,
     PhoneNumber NVARCHAR(20) NOT NULL,
-    Active BOOLEAN
+    Active BOOLEAN NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Subscription (
