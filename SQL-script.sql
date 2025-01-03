@@ -53,11 +53,11 @@ CREATE TABLE IF NOT EXISTS Subscription (
 CREATE TABLE IF NOT EXISTS MessageSent (
     MessageSentId INTEGER PRIMARY KEY AUTOINCREMENT,
     PassengerId INTEGER NOT NULL,
-    TrainId INTEGER NOT NULL,
+    SubscriptionId INTEGER NOT NULL,
     SentAt DATETIME NOT NULL,
     Content NVARCHAR(100) NOT NULL,
-    FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId),
-    FOREIGN KEY (TrainId) REFERENCES Train(TrainId)
+    FOREIGN KEY (PassengerId) REFERENCES Passenger(PassengerId)
+    FOREIGN KEY (SubscriptionId) REFERENCES Subscription(SubscriptionId)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_train_null_actualdeparturetime

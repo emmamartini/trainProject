@@ -221,3 +221,15 @@ Hello Elin, your train is on time and is leaving at 19:55.
 Hello Elin, your train is on time and is leaving at 20:06.
 Hello Elin, your train is on time and is leaving at 20:06.
 Hello Elin, your train is on time and is leaving at 20:06.
+Hello Elin, your train with original departure time 13:38 is estimated to leave 13:54.
+Hello Elin, your train is on time and is leaving at 13:55.
+Hello Elin, your train is on time and is leaving at 13:55.
+Hello Elin, your train is on time and is leaving at 13:55.
+Hello Elin, your train is on time and is leaving at 13:55.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train is on time and is leaving at 15:25.
+Hello Elin, your train with original departure time 14:42 is estimated to leave 15:37.
