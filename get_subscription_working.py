@@ -10,47 +10,7 @@ import time
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
 
 delayedTrainQueue = queue.Queue()
-def removeTrain(trainId):
-    print("remove")
-    temporaryQueue = queue.Queue()
-    # Iterera över kön
-    while not delayedTrainQueue.empty():
-        train = delayedTrainQueue.get()
-        trainInfo, passengerInfo, subscription = train
-        print(f"hela kön{train}")
-        print(f"1{trainInfo}")
-        print(f"2{passengerInfo}")
-        print(f"3{subscription}")
-        print(f"traininfo09 {trainInfo[0][9]}")
-        print(f"trainid {trainId}")
-        if trainInfo[0][9] != trainId:  # Kolla om ActivityId INTE matchar
-            temporaryQueue.put(train)  # Lägg tillbaka objektet om det inte matchar
-            
-    while not temporaryQueue.empty():
-        delayedTrainQueue.put(temporaryQueue.get())
-                        
-def replaceTrain(trainInfo, trainUpdate):
-    print("replace")
-    temporaryQueue = queue.Queue()
-    replaced = False
-    while not delayedTrainQueue.empty():
-        train = delayedTrainQueue.get()
-        trainInfo, passengerInfo, subscription, trainUpdate = train
-        print(f"train: {train}")
-        print(f"traininfo: {trainInfo}")
-        print(f"passengerinfo: {passengerInfo}")
-        print(f"subscription: {subscription}")
-        if trainInfo[0][9] == trainUpdate[0][0]:  # Jämför ActivityId
-            temporaryQueue.put((trainInfo, passengerInfo, subscription, trainUpdate))  # Lägg in uppdaterad
-            replaced = True
-        else:
-            temporaryQueue.put(train)  # Lägg tillbaka oförändrat
-    if not replaced:  # Om inget matchande hittades, lägg tillbaka den nya
-        temporaryQueue.put((trainInfo, passengerInfo, subscription))
-    
-    while not temporaryQueue.empty():
-        delayedTrainQueue.put(temporaryQueue.get())
-        
+
 def save_message_to_database(passengerId, subscription, timeSent, message):
     conn = connect_to_database()
     cur = conn.cursor()
@@ -58,87 +18,53 @@ def save_message_to_database(passengerId, subscription, timeSent, message):
     conn.commit()
 
 def delayed_train():
-    lastPrint = time.time()
-    trainUpdateList = []
+    activityIdList = []
     while True:
         try:
-            currentTime = time.time()
-            if currentTime - lastPrint >= 10:
-                lastPrint = currentTime
-                delayedTrain = delayedTrainQueue.get(timeout=10)
-                trainInfo, passengerInfo, subscription, trainUpdate = delayedTrain
-                print(trainInfo)
-                todaysDate = datetime.now()
-                todaysDate = todaysDate.strftime("%Y-%m-%d")
-                while True:
-                    xml_request = f"""
-                    <REQUEST>
-                      <LOGIN authenticationkey='{AUTH_KEY}'/>
-                      <QUERY objecttype="TrainAnnouncement" schemaversion="1.5">
-                        <FILTER>
-                        <AND>
-                            <EQ name="ActivityId" value="{trainInfo[0][9]}"/>
-                        </AND>
-                        </FILTER>
-                        <INCLUDE>ActivityId</INCLUDE>
-                        <INCLUDE>Canceled</INCLUDE>
-                        <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
-                      </QUERY>
-                    </REQUEST>
-                    """
-                    headers = {'Content-Type': 'text/xml'}
-                    response = requests.post(API_URL, headers=headers, data=xml_request)
-                    if response.status_code == 200:
-                        response_data = response.json()
-                        for item in response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']:
-                            trainUpdateList.append([
-                                item['ActivityId'],
-                                item['Canceled'],
-                                item['EstimatedTimeAtLocation']])
-                    break
-                print("kör")
-                print(trainInfo[0])
-                print(trainInfo[0][9])
-                print(trainUpdate)
-                departureTimeAndDate = trainInfo[0][2]
-                departureTime = departureTimeAndDate[11:16]
-                
-                if canceled(trainInfo):
-                    print(f"dpt: {departureTime}")
-                    departured_train(trainInfo)
-                    txtFile = "textMessages.txt"
-                    textMessage = f"Hello {passengerInfo[1]}, your train with departure time {departureTime} is sadly canceled."
-                    removeTrain(trainUpdate)
-
-                elif has_train_departed(trainInfo, trainUpdate):
-                    departured_train(trainInfo, trainUpdate)
-                    removeTrain(trainInfo[0][9])
-
-                elif trainInfo[0][5] != False:
-                    estimatedTimeAndDate = trainInfo[0][5]
-                    estimatedDepartureTime = estimatedTimeAndDate[11:16]
-                    txtFile = "textMessages.txt"
-                    textMessage = f"Hello {passengerInfo[1]}, your train with original departure time {departureTime} is estimated to leave at {estimatedDepartureTime} o'clock."
-                    replaceTrain(trainInfo, trainUpdate)
-                
-                try:    
-                    if textMessage:
-                        with open(txtFile, "a", encoding="utf-8") as file:
-                            file.write(textMessage + "\n")  
-                        timeSent = datetime.now()
-                        timeSent = timeSent.strftime("%Y-%m-%d %H:%M:%S")
-                        save_message_to_database(passengerInfo[0], subscription, timeSent, textMessage)
-                except:
-                    pass
-                
+            delayedTrain = delayedTrainQueue.get(timeout=180)
+            trainInfo, passengerInfo = delayedTrain
+            
+            if not more_than_5(trainInfo, passengerInfo):
+                print("hej1")
+                continue
+            
+            if not has_train_departed(trainInfo):
+                print("hej2")
+                delayedTrainQueue.put(delayedTrain)
+            
         except queue.Empty:
             pass
 
-def has_train_departed(trainInfo, trainUpdate=None):
+def more_than_5(trainInfo, passengerInfo):
     if trainInfo[0][5] == False:
         departureTimeAndDateString = trainInfo[0][2]
     else:
-        departureTimeAndDateString = trainUpdate[0][2]
+        departureTimeAndDateString = trainInfo[0][5]
+        
+    departureTimeString = departureTimeAndDateString[11:16]    
+    currentTimeString = datetime.now().strftime("%H:%M")  
+    currentTime = datetime.strptime(currentTimeString, "%H:%M")
+    departureTime = datetime.strptime(departureTimeString, "%H:%M")
+    timeDifference = currentTime - departureTime
+    
+    #Om tåget går inom 5 minuter
+    if timedelta(minutes=0) <= timeDifference <= timedelta(minutes=5):
+        return True
+    
+    #Om tåget har avgått
+    elif timeDifference <= timedelta(minutes=0):
+        departured_train(trainInfo)
+        return False
+    
+    #Om tåget avgår inom 5 minuter
+    elif timeDifference > timedelta(minutes=5):
+        delayed_messages(trainInfo, passengerInfo)
+
+def has_train_departed(trainInfo):
+    if trainInfo[0][5] == False:
+        departureTimeAndDateString = trainInfo[0][2]
+    else:
+        departureTimeAndDateString = trainInfo[0][5]
         
     departureTimeString = departureTimeAndDateString[11:16]    
     currentTimeString = datetime.now().strftime("%H:%M")  
@@ -146,12 +72,6 @@ def has_train_departed(trainInfo, trainUpdate=None):
     departureTime = datetime.strptime(departureTimeString, "%H:%M").time()
     if departureTime <= currentTime:
         departured_train(trainInfo)
-        return True
-    
-def canceled(trainInfo):
-    if trainInfo[0][4] == False:
-        return False
-    else:
         return True
     
 
@@ -226,7 +146,7 @@ def send_message(trainInfo, passengerId, subscription):
     if trainInfo[0][5] != False:
         estimatedTimeAndDate = trainInfo[0][5]
         estimatedDepartureTime = estimatedTimeAndDate[11:16]
-    print(trainInfo)
+        
     #if the train is on time
     if all(value == False for value in trainInfo[2:7]) and trainInfo[0][5] == False:
         has_train_departed(trainInfo)
@@ -239,7 +159,7 @@ def send_message(trainInfo, passengerId, subscription):
 
     #if the train is delayed
     elif departureTime != estimatedDepartureTime:
-        delayedTrainQueue.put((trainInfo, passengerInfo, subscription, None))
+        delayedTrainQueue.put((trainInfo, passengerInfo))
         textMessage = f"Hello {passengerInfo[1]}, your train with original departure time {departureTime} is estimated to leave {estimatedDepartureTime}."
     
     with open(txtFile, "a", encoding="utf-8") as file:
@@ -275,7 +195,6 @@ def actual_names(subscriptions):
 
 def get_train_from_api(subscriptionRow):  
     trains = []
-    print("letar")
     last_change_id = 0
     todaysDate = datetime.now()
     todaysDate = todaysDate.strftime("%Y-%m-%d")
@@ -351,7 +270,7 @@ def check_subscription_time():
             timeIn5String = timeIn5.strftime("%H:%M")
             timeIn10 = currentTime + timedelta(minutes=10)
             timeIn10String = timeIn10.strftime("%H:%M")
-            timeIn15 = currentTime + timedelta(minutes=2)
+            timeIn15 = currentTime + timedelta(minutes=-35)
             timeIn15String = timeIn15.strftime("%H:%M")
             conn = connect_to_database()
             cur = conn.cursor()
