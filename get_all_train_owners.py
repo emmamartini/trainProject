@@ -1,8 +1,8 @@
 import sqlite3
 import requests
+from api_key import AUTH_KEY
 
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
-AUTH_KEY = "1096e6d589254b89a2600b844576f6f9"
 
 
 def get_owners():
@@ -31,8 +31,7 @@ def get_owners():
              
             if 'INFO' in response_data['RESPONSE']['RESULT'][0]:
                 last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
-            # Om antalet ägare är mindre än gränsen, bryt ut från loopen
-            if len(response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']) < 500000:  # Om vi fick färre än 500000 annonser, finns det inga fler att hämta
+            if len(response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']) < 500000:
                 return (train_owner_set)
 
 def exportOwner(train_owner_set):

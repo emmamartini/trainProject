@@ -1,8 +1,8 @@
 import sqlite3
 import requests
+from api_key import AUTH_KEY
 
 API_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json"
-AUTH_KEY = "1096e6d589254b89a2600b844576f6f9"
 
 
 def get_stations():
@@ -36,8 +36,7 @@ def get_stations():
              
             if 'INFO' in response_data['RESPONSE']['RESULT'][0]:
                 last_change_id = response_data['RESPONSE']['RESULT'][0]['INFO'].get('LASTCHANGEID')
-            # Om antalet stationer är mindre än gränsen, bryt ut från loopen
-            if len(response_data['RESPONSE']['RESULT'][0]['TrainStation']) < 50:  # Om vi fick färre än 50 annonser, finns det inga fler att hämta
+            if len(response_data['RESPONSE']['RESULT'][0]['TrainStation']) < 50:
                 return (train_station_list)
 
 def exportTrain(train_station_list):

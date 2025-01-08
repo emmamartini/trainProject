@@ -1,7 +1,7 @@
 import threading
 import queue
-from config import AUTH_KEY
-from programwithfunctions import connect_to_database
+from api_key import AUTH_KEY
+from userApplication import connect_to_database
 from datetime import datetime, timedelta
 import requests
 import os
@@ -18,47 +18,23 @@ def save_message_to_database(passengerId, subscription, timeSent, message):
     conn.commit()
 
 def delayed_train():
-    activityIdList = []
     while True:
         try:
             delayedTrain = delayedTrainQueue.get(timeout=180)
             trainInfo, passengerInfo = delayedTrain
-            
-            if not more_than_5(trainInfo, passengerInfo):
-                print("hej1")
-                continue
-            
-            if not has_train_departed(trainInfo):
-                print("hej2")
-                delayedTrainQueue.put(delayedTrain)
+            if cancelled(trainInfo):
+                departured_train(trainInfo)
+            elif has_train_departed(trainInfo):
+                departured_train(trainInfo)            
+            else:
+                pass
             
         except queue.Empty:
             pass
 
-def more_than_5(trainInfo, passengerInfo):
-    if trainInfo[0][5] == False:
-        departureTimeAndDateString = trainInfo[0][2]
-    else:
-        departureTimeAndDateString = trainInfo[0][5]
-        
-    departureTimeString = departureTimeAndDateString[11:16]    
-    currentTimeString = datetime.now().strftime("%H:%M")  
-    currentTime = datetime.strptime(currentTimeString, "%H:%M")
-    departureTime = datetime.strptime(departureTimeString, "%H:%M")
-    timeDifference = currentTime - departureTime
-    
-    #Om tåget går inom 5 minuter
-    if timedelta(minutes=0) <= timeDifference <= timedelta(minutes=5):
+def cancelled(trainInfo):
+    if trainInfo[0][4] == True:
         return True
-    
-    #Om tåget har avgått
-    elif timeDifference <= timedelta(minutes=0):
-        departured_train(trainInfo)
-        return False
-    
-    #Om tåget avgår inom 5 minuter
-    elif timeDifference > timedelta(minutes=5):
-        delayed_messages(trainInfo, passengerInfo)
 
 def has_train_departed(trainInfo):
     if trainInfo[0][5] == False:
@@ -247,6 +223,8 @@ def get_train_from_api(subscriptionRow):
                 if len(response_data['RESPONSE']['RESULT'][0]['TrainAnnouncement']) == 1:
                     send_message(trains, subscriptionRow[1], subscriptionRow)
                 else:
+                    print(xml_request)
+                    print(response_data)
                     print("0 or more than 1 trains returned")
                 break
         pass
@@ -270,7 +248,7 @@ def check_subscription_time():
             timeIn5String = timeIn5.strftime("%H:%M")
             timeIn10 = currentTime + timedelta(minutes=10)
             timeIn10String = timeIn10.strftime("%H:%M")
-            timeIn15 = currentTime + timedelta(minutes=-35)
+            timeIn15 = currentTime + timedelta(minutes=15)
             timeIn15String = timeIn15.strftime("%H:%M")
             conn = connect_to_database()
             cur = conn.cursor()
@@ -283,12 +261,10 @@ def check_subscription_time():
         if match:
             actual_names(match)
         else:
-            print("No matches found!")
+            pass
         time.sleep(60)
       
-    #när dagen är rätt och tiden är en kvart innan ska ett meddelande skickas till passageraren
-    #skapa ett program som då och då kollar om någons tid närmar sig(separat funktion)   
-    #om en tid närmar sig ska detta triggas oftare (15 min, 10 min, 5 min, varje minut) 
+
 delayedThread = threading.Thread(target=delayed_train, daemon=True)
 delayedThread.start()
 print("delayedTrain thread started.")    

@@ -1,7 +1,7 @@
 import threading
 import queue
-from config import AUTH_KEY
-from programwithfunctions import connect_to_database
+from api_key import AUTH_KEY
+from userApplication import connect_to_database
 from datetime import datetime, timedelta
 import requests
 import os

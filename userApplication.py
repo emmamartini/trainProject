@@ -1,4 +1,4 @@
-from config import AUTH_KEY
+from api_key import AUTH_KEY
 import sqlite3
 import time
 import bcrypt
@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 
 def hash_password(password):
     salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed_password
+    hashedPassword = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashedPassword
 
 
 def returning():
@@ -771,11 +771,9 @@ def main():
             userInfo = gather_userInfo()
             new_user(userInfo)
             returning()
-
-        if number == 2:
+        elif number == 2:
             log_in()
-
-        if number == 3:
+        elif number == 3:
             print("Ending program...")
             runProgram = False
 
